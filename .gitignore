@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.cache/
+breakout_scanner.db
+*.pkl
+.DS_Store

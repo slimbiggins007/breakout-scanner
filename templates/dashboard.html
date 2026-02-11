@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breakout Scanner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <h1 class="title">BREAKOUT SCANNER</h1>
+            <span class="date">{{ now.strftime('%A, %b %d, %Y') }}</span>
+        </div>
+        <div class="header-right">
+            <div class="stat-box">
+                <span class="stat-value ready-text">{{ stats.ready }}</span>
+                <span class="stat-label">READY</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-value watch-text">{{ stats.watch }}</span>
+                <span class="stat-label">WATCH</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-value building-text">{{ stats.building }}</span>
+                <span class="stat-label">BUILDING</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-value">{{ stats.total_hits }}</span>
+                <span class="stat-label">TOTAL</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <div class="filter-group">
+            <label class="filter-label">Status</label>
+            <div class="filter-buttons" id="status-filters">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn ready-btn" data-filter="READY">Ready</button>
+                <button class="filter-btn watch-btn" data-filter="WATCH">Watch</button>
+                <button class="filter-btn building-btn" data-filter="BUILDING">Building</button>
+            </div>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Sector</label>
+            <div class="filter-buttons" id="sector-filters">
+                <button class="filter-btn active" data-filter="all">All</button>
+                {% for sector in sectors %}
+                <button class="filter-btn" data-filter="{{ sector }}">{{ sector.split('/')[0].split(' ')[0][:12] }}</button>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Setup</label>
+            <div class="filter-buttons" id="type-filters">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="1">Type 1</button>
+                <button class="filter-btn" data-filter="2">Type 2</button>
+                <button class="filter-btn" data-filter="3">Type 3</button>
+                <button class="filter-btn" data-filter="4">Type 4</button>
+            </div>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Date</label>
+            <select id="date-select" class="date-select">
+                {% for d in scan_dates %}
+                <option value="{{ d }}" {{ 'selected' if d == selected_date else '' }}>{{ d }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <!-- Results Grid -->
+    <div class="results-grid" id="results-grid">
+        {% if not results %}
+        <div class="empty-state">
+            <p>No scan results yet. Run <code>python3 scanner.py</code> to generate results.</p>
+        </div>
+        {% endif %}
+
+        {% for r in results %}
+        <div class="card"
+             data-status="{{ r.status }}"
+             data-sector="{{ r.sector }}"
+             data-type="{{ r.setup_type }}"
+             data-score="{{ r.score }}"
+             data-ticker="{{ r.ticker }}">
+            <div class="card-header">
+                <div class="ticker-block">
+                    <span class="ticker">{{ r.ticker }}</span>
+                    <span class="sector-tag">{{ r.sector.split('/')[0].split(' ')[0][:12] }}</span>
+                </div>
+                <div class="score-block">
+                    <span class="score {{ r.status | lower }}-score">{{ r.score }}</span>
+                    <span class="status-badge {{ r.status | lower }}-badge">{{ r.status }}</span>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div class="setup-type">
+                    <span class="type-badge">Type {{ r.setup_type }}</span>
+                    <span class="type-name">{{ r.setup_name }}</span>
+                </div>
+
+                <div class="price-row">
+                    <span class="price">${{ '%.2f' % r.price_at_scan }}</span>
+                    <span class="change {% if r.change_pct >= 0 %}positive{% else %}negative{% endif %}">
+                        {{ '%+.1f' % r.change_pct }}%
+                    </span>
+                </div>
+
+                <!-- Criteria Dots -->
+                <div class="criteria-dots">
+                    {% set criteria = r.criteria_summary %}
+                    {% if criteria %}
+                        {% for key, val in criteria.items() %}
+                        <span class="dot {% if val %}dot-pass{% else %}dot-fail{% endif %}" title="{{ key }}">
+                            {{ key }}
+                        </span>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
+                <!-- IV Info -->
+                {% set iv = r.iv_info if r.iv_info else {} %}
+                {% if iv.get('iv') %}
+                <div class="iv-row">
+                    <span class="iv-badge {{ 'iv-cheap' if iv.get('iv_label') == 'CHEAP' else ('iv-fair' if iv.get('iv_label') == 'FAIR' else 'iv-expensive') }}">
+                        {{ iv.get('iv_label', 'N/A') }}
+                    </span>
+                    <span class="iv-stat">IV {{ '%.0f' % iv.iv }}%</span>
+                    {% if iv.get('hv20') %}
+                    <span class="iv-stat">HV {{ '%.0f' % iv.hv20 }}%</span>
+                    {% endif %}
+                    {% if iv.get('iv_hv_ratio') %}
+                    <span class="iv-stat">IV/HV {{ '%.2f' % iv.iv_hv_ratio }}</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Score Bar -->
+                <div class="score-bar-container">
+                    <div class="score-bar {{ r.status | lower }}-bar" style="width: {{ r.score }}%"></div>
+                </div>
+            </div>
+
+            <div class="card-footer">
+                <span class="expand-hint" onclick="toggleCard(this)">Chart + Details</span>
+                <div class="card-details">
+                    <!-- Chart container -->
+                    <div class="chart-container" id="chart-{{ r.ticker }}-{{ loop.index }}"></div>
+                    <div class="chart-legend">
+                        <span class="legend-item"><span class="legend-dot" style="background:#00ff87"></span>EMA 9</span>
+                        <span class="legend-item"><span class="legend-dot" style="background:#ffcc00"></span>EMA 21</span>
+                        <span class="legend-item"><span class="legend-dot" style="background:#4a9eff"></span>EMA 50</span>
+                    </div>
+                    <p class="note">{{ r.note }}</p>
+                    {% if r.breakout_triggered %}
+                    <span class="breakout-tag">BREAKOUT TRIGGERED</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <span>Breakout Scanner v1.0</span>
+        <span>{{ stats.total_scan_days }} scan days recorded</span>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
