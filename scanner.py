@@ -194,7 +194,7 @@ def scan_ticker(
             "note": pat["note"],
             "price": round(last["Close"], 2),
             "change_pct": round(change_pct, 2),
-            "breakout_triggered": pat["breakout_triggered"],
+            "breakout_triggered": bool(pat["breakout_triggered"]),
             "breakdown": score_data["breakdown"],
             "iv_info": iv_info,
         })

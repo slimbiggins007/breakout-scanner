@@ -199,10 +199,10 @@ def compute_total_score(
     # Build the 4-criteria summary for the display dots
     criteria = pattern["criteria"]
     criteria_summary = {
-        "Tight": criteria.get("tight", False) or criteria.get("descending_tl", False) or criteria.get("near_resistance", False),
-        "EMA": criteria.get("ema_stacked", False) or criteria.get("weekly_ema_bullish", False) or criteria.get("ema50_rising", False),
-        "MACD": criteria.get("macd_curl", False) or criteria.get("macd_flat", False) or criteria.get("macd_divergence", False),
-        "Volume": criteria.get("vol_declining", False) or criteria.get("breakout", False) or criteria.get("recovery_volume", False),
+        "Tight": bool(criteria.get("tight", False) or criteria.get("descending_tl", False) or criteria.get("near_resistance", False)),
+        "EMA": bool(criteria.get("ema_stacked", False) or criteria.get("weekly_ema_bullish", False) or criteria.get("ema50_rising", False)),
+        "MACD": bool(criteria.get("macd_curl", False) or criteria.get("macd_flat", False) or criteria.get("macd_divergence", False)),
+        "Volume": bool(criteria.get("vol_declining", False) or criteria.get("breakout", False) or criteria.get("recovery_volume", False)),
     }
 
     return {

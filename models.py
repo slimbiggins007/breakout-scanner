@@ -47,4 +47,5 @@ INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_ticker ON scan_results(ticker);",
     "CREATE INDEX IF NOT EXISTS idx_status ON scan_results(status);",
     "CREATE INDEX IF NOT EXISTS idx_score ON scan_results(score);",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_scan_date_ticker ON scan_results(scan_date, ticker);",
 ]

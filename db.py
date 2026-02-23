@@ -48,7 +48,16 @@ def save_scan_result(result: dict):
         """INSERT INTO scan_results
            (scan_date, ticker, sector, setup_type, setup_name, score, status,
             price_at_scan, change_pct, breakout_triggered, note, criteria_json, iv_json)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(scan_date, ticker) DO UPDATE SET
+               setup_type = excluded.setup_type,
+               setup_name = excluded.setup_name,
+               score = excluded.score,
+               status = excluded.status,
+               note = excluded.note,
+               criteria_json = excluded.criteria_json,
+               iv_json = excluded.iv_json
+           WHERE excluded.score > scan_results.score""",
         (
             datetime.now().strftime("%Y-%m-%d"),
             result["ticker"],
@@ -87,9 +96,15 @@ def get_latest_scan() -> list[dict]:
     """Get all results from the most recent scan date."""
     conn = get_connection()
     cursor = conn.execute(
-        """SELECT * FROM scan_results
-           WHERE scan_date = (SELECT MAX(scan_date) FROM scan_results)
-           ORDER BY score DESC"""
+        """SELECT sr.* FROM scan_results sr
+           INNER JOIN (
+               SELECT ticker, MAX(score) as max_score
+               FROM scan_results
+               WHERE scan_date = (SELECT MAX(scan_date) FROM scan_results)
+               GROUP BY ticker
+           ) best ON sr.ticker = best.ticker AND sr.score = best.max_score
+           WHERE sr.scan_date = (SELECT MAX(scan_date) FROM scan_results)
+           ORDER BY sr.score DESC"""
     )
     rows = [dict(r) for r in cursor.fetchall()]
     conn.close()
@@ -133,10 +148,16 @@ def get_scan_by_date(date: str) -> list[dict]:
     """Get all results for a specific scan date."""
     conn = get_connection()
     cursor = conn.execute(
-        """SELECT * FROM scan_results
-           WHERE scan_date = ?
-           ORDER BY score DESC""",
-        (date,),
+        """SELECT sr.* FROM scan_results sr
+           INNER JOIN (
+               SELECT ticker, MAX(score) as max_score
+               FROM scan_results
+               WHERE scan_date = ?
+               GROUP BY ticker
+           ) best ON sr.ticker = best.ticker AND sr.score = best.max_score
+           WHERE sr.scan_date = ?
+           ORDER BY sr.score DESC""",
+        (date, date),
     )
     rows = [dict(r) for r in cursor.fetchall()]
     conn.close()
